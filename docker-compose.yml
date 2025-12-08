@@ -1,0 +1,11 @@
+version: '3'
+services:
+  watermark-node:
+    build: .
+    container_name: watermark-node-server
+    ports:
+      - "3000:3000" # 左边是服务器对外端口，右边是容器内端口
+    volumes:
+      - ./uploads:/app/uploads       # 映射上传目录，防止重启后图片丢失
+      - ./processed:/app/processed   # 映射结果目录
+    restart: always
