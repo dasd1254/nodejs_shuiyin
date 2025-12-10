@@ -1,3 +1,4 @@
-# 使用 headless 版本，因为它不需要显示器环境，适合服务器
 opencv-python-headless
 numpy
+paddlepaddle==2.6.0
+paddleocr>=2.7.0

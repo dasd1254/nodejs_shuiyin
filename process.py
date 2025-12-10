@@ -1,65 +1,75 @@
-# process.py
 import cv2
 import numpy as np
 import sys
 import os
+import logging
 
-def remove_watermark(input_path, output_path):
-    # 1. 检查文件是否存在
-    if not os.path.exists(input_path):
-        print(f"Error: Input file not found at {input_path}", file=sys.stderr)
-        sys.exit(1)
+# 禁止 PaddleOCR 打印繁杂的日志
+os.environ['FLAGS_allocator_strategy'] = 'auto_growth'
+logging.getLogger("ppocr").setLevel(logging.ERROR)
+
+from paddleocr import PaddleOCR
+
+def remove_watermark_auto(input_path, output_path):
+    # 1. 初始化 OCR 模型 (第一次运行会自动下载模型，约 15MB)
+    # use_angle_cls=True: 支持识别旋转的文字
+    # lang='ch': 支持中英文
+    ocr = PaddleOCR(use_angle_cls=True, lang="ch", show_log=False)
 
     # 2. 读取图片
     img = cv2.imread(input_path)
     if img is None:
-        print("Error: Could not decode image", file=sys.stderr)
+        print("Error: Could not read image", file=sys.stderr)
         sys.exit(1)
 
-    height, width = img.shape[:2]
+    # 3. AI 识别：获取所有文字的坐标
+    # result 结构: [[[坐标点], (文字, 置信度)], ...]
+    result = ocr.ocr(input_path, cls=True)
 
-    # ==========================================
-    # 核心逻辑：定义需要修复的区域 (Mask)
-    # ==========================================
-    # 创建一个纯黑色的掩膜图片，大小与原图一致
+    # 如果没识别到文字，直接保存原图
+    if result is None or len(result) == 0 or result[0] is None:
+        cv2.imwrite(output_path, img)
+        print("SUCCESS")
+        return
+
+    # 4. 创建掩膜 (Mask)
+    # mask 是一个纯黑图片，我们在上面把文字区域涂白
     mask = np.zeros(img.shape[:2], np.uint8)
-
-    # 【关键演示设定】：假设水印在右下角，宽160，高60的区域
-    # 在真实商业项目中，这一步通常由一个 AI 检测模型来自动生成白色区域
-    watermark_width = 160
-    watermark_height = 60
     
-    # 计算右下角的坐标
-    start_point = (width - watermark_width, height - watermark_height)
-    end_point = (width, height)
-    
-    # 在 mask 上，把需要去水印的区域画成纯白色 (255)
-    # cv2.rectangle(图像, 左上角坐标, 右下角坐标, 颜色(白色), 线宽(-1表示填充))
-    cv2.rectangle(mask, start_point, end_point, 255, -1)
+    # 遍历识别到的每一段文字
+    for line in result[0]:
+        points = line[0] # 获取文字框的四个角坐标
+        
+        # 将坐标转换为整数格式
+        points = np.array(points).astype(np.int32)
+        
+        # 【关键优化】稍微扩大一点识别区域 (膨胀)，保证把文字边缘也覆盖住
+        # 这样去除得更干净
+        # 计算矩形包围框
+        x, y, w, h = cv2.boundingRect(points)
+        
+        # 在 mask 上画出白色实心矩形 (扩大 5 像素)
+        pad = 5 
+        cv2.rectangle(mask, (max(0, x-pad), max(0, y-pad)), (min(img.shape[1], x+w+pad), min(img.shape[0], y+h+pad)), 255, -1)
 
-    # ==========================================
-    # 核心算法：执行修复 (Inpainting)
-    # ==========================================
-    # 使用 Telea 算法根据 mask 进行修复，半径为 3 像素
-    # 这个函数会自动参考白色区域周围的像素，把它填补上
-    result = cv2.inpaint(img, mask, 3, cv2.INPAINT_TELEA)
+    # 5. 执行修复 (Inpainting)
+    # 使用 Telea 算法，根据 mask 修复原图
+    # radius=5: 修复半径，根据水印大小调整
+    result_img = cv2.inpaint(img, mask, 5, cv2.INPAINT_TELEA)
 
-    # 4. 保存结果
-    cv2.imwrite(output_path, result)
-    print("SUCCESS") # 向 Node.js 发送成功信号
+    # 6. 保存图片
+    cv2.imwrite(output_path, result_img)
+    print("SUCCESS")
 
 if __name__ == "__main__":
-    # 接收 Node.js 传来的参数
-    # 格式: python3 process.py <输入路径> <输出路径>
     if len(sys.argv) < 3:
-        print("Usage: python3 process.py <input_path> <output_path>", file=sys.stderr)
         sys.exit(1)
     
     input_file = sys.argv[1]
     output_file = sys.argv[2]
     
     try:
-        remove_watermark(input_file, output_file)
+        remove_watermark_auto(input_file, output_file)
     except Exception as e:
-        print(f"Python Error: {str(e)}", file=sys.stderr)
+        print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
