@@ -14,7 +14,7 @@ RUN npm install --production --registry=https://registry.npmmirror.com
 COPY . .
 
 # 5. 暴露端口 (通常 Node.js 默认是 3000，如果是其他请修改)
-EXPOSE 3000
+EXPOSE 3001
 
 # 6. 启动命令
 # ⚠️ 注意：如果你的入口文件是 app.js，请把 index.js 改成 app.js
