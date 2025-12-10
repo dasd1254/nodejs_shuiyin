@@ -34,4 +34,4 @@ RUN npm install --production --registry=https://registry.npmmirror.com
 COPY . .
 
 EXPOSE 3001
-CMD ["node", "index.js"]
+CMD ["node", "server.js"]
