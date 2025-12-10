@@ -1,20 +1,21 @@
-# 使用 Node 18 的轻量版镜像
+# 1. 使用 Node.js 18 轻量版镜像
 FROM node:18-alpine
 
-# 设置工作目录
+# 2. 设置工作目录
 WORKDIR /app
 
-# 先复制 package.json 安装依赖（利用缓存机制加速）
-COPY package.json .
-# 如果有 package-lock.json 也可以在这里 copy
-# 使用淘宝源加速安装
-RUN npm install --registry=https://registry.npmmirror.com
+# 3. 复制依赖清单并安装
+# (利用 Docker 缓存机制，先只拷 package.json 加速构建)
+COPY package*.json ./
+# 安装生产环境依赖 (不装 devDependencies)
+RUN npm install --production --registry=https://registry.npmmirror.com
 
-# 复制所有源代码
+# 4. 复制项目所有代码
 COPY . .
 
-# 暴露 3000 端口
+# 5. 暴露端口 (通常 Node.js 默认是 3000，如果是其他请修改)
 EXPOSE 3000
 
-# 启动服务
+# 6. 启动命令
+# ⚠️ 注意：如果你的入口文件是 app.js，请把 index.js 改成 app.js
 CMD ["node", "server.js"]
