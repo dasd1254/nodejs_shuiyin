@@ -4,16 +4,19 @@ import sys
 import os
 import logging
 
-# 禁止 PaddleOCR 打印繁杂的日志
+# 1. 禁止繁杂日志 (通过环境变量控制，不通过参数控制)
 os.environ['FLAGS_allocator_strategy'] = 'auto_growth'
 logging.getLogger("ppocr").setLevel(logging.ERROR)
 
 from paddleocr import PaddleOCR
 
 def remove_watermark_auto(input_path, output_path):
-    # 1. 初始化 OCR 模型
-    # ⚠️ 注意：这行代码前面必须有空格！属于函数内部
-    ocr = PaddleOCR(use_angle_cls=True, lang="ch")
+    # ==========================================================
+    # 【关键修改 1】 初始化
+    # 1. use_angle_cls=False : 关闭方向检测，解决 cls 报错
+    # 2. 删除了 show_log=False : 解决 Unknown argument 报错
+    # ==========================================================
+    ocr = PaddleOCR(use_angle_cls=False, lang="ch")
 
     # 2. 读取图片
     img = cv2.imread(input_path)
@@ -21,15 +24,19 @@ def remove_watermark_auto(input_path, output_path):
         print("Error: Could not read image", file=sys.stderr)
         sys.exit(1)
 
-    # 3. AI 识别
-    result = ocr.ocr(input_path, cls=True)
+    # ==========================================================
+    # 【关键修改 2】 识别
+    # cls=False : 再次确认关闭方向分类
+    # ==========================================================
+    result = ocr.ocr(input_path, cls=False)
 
+    # 如果没识别到文字，直接保存原图
     if result is None or len(result) == 0 or result[0] is None:
         cv2.imwrite(output_path, img)
         print("SUCCESS")
         return
 
-    # 4. 创建掩膜
+    # 3. 创建掩膜
     mask = np.zeros(img.shape[:2], np.uint8)
     
     for line in result[0]:
@@ -37,13 +44,14 @@ def remove_watermark_auto(input_path, output_path):
         points = np.array(points).astype(np.int32)
         x, y, w, h = cv2.boundingRect(points)
         
+        # 稍微扩大消除范围
         pad = 5 
         cv2.rectangle(mask, (max(0, x-pad), max(0, y-pad)), (min(img.shape[1], x+w+pad), min(img.shape[0], y+h+pad)), 255, -1)
 
-    # 5. 执行修复
+    # 4. 执行修复
     result_img = cv2.inpaint(img, mask, 5, cv2.INPAINT_TELEA)
 
-    # 6. 保存图片
+    # 5. 保存图片
     cv2.imwrite(output_path, result_img)
     print("SUCCESS")
 
