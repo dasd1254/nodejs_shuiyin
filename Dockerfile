@@ -3,7 +3,7 @@ FROM node:18-bullseye-slim
 
 WORKDIR /app
 
-# 1. 换源并安装系统依赖 (添加了 libgl1-mesa-glx, libgomp1 等关键库)
+# 1. 换源并安装系统依赖
 RUN sed -i 's/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apt/sources.list && \
     sed -i 's/security.debian.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apt/sources.list && \
     apt-get update && apt-get install -y \
@@ -23,8 +23,7 @@ RUN python3 -m pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/si
 COPY requirements.txt .
 RUN pip3 install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
-# 4. 【关键修改】预下载模型 (去掉了报错的 show_log 参数)
-# 这一步会下载检测和识别模型，构建时间会稍长
+# 4. 【关键修改】预下载模型 (去掉了 show_log=False)
 RUN python3 -c "from paddleocr import PaddleOCR; PaddleOCR(lang='ch')"
 
 # 5. 安装 Node 依赖

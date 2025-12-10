@@ -14,7 +14,8 @@ def remove_watermark_auto(input_path, output_path):
     # 1. 初始化 OCR 模型 (第一次运行会自动下载模型，约 15MB)
     # use_angle_cls=True: 支持识别旋转的文字
     # lang='ch': 支持中英文
-   ocr = PaddleOCR(use_angle_cls=True, lang="ch")
+ # 初始化 OCR 模型
+ocr = PaddleOCR(use_angle_cls=True, lang="ch")
 
     # 2. 读取图片
     img = cv2.imread(input_path)
