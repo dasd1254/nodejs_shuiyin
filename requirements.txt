@@ -1,4 +1,4 @@
 opencv-python-headless
 numpy
-paddlepaddle==2.6.0
+paddlepaddle
 paddleocr>=2.7.0
