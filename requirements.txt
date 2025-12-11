@@ -1,7 +1,5 @@
-# 强制指定 opencv 版本
 opencv-python-headless
-# 【绝对关键】强制锁死 Numpy 为 1.24.3 (这个版本最稳，打死也不要用 2.x)
-numpy==1.24.3
-# Paddle 依赖
+# 【核心修复】强制使用 1.x 版本，禁止安装 Numpy 2.0
+numpy<2.0.0
 paddlepaddle
 paddleocr>=2.7.0
